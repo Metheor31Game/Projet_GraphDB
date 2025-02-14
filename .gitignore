@@ -1,0 +1,37 @@
+# Fichiers générés par Dune
+_build/
+_opam/
+*.exe
+*.o
+*.3o
+*.cmi
+*.cmx
+*.cmo
+*.cmt
+*.cma
+*.annot
+dune-workspace
+dune-project
+
+# Fichiers spécifiques à OPAM
+.opam/
+.opam-switch/
+.opam-switch/switch-config
+.opam-switch/build/
+.opam-switch/install/
+.opam-switch/lib/
+.opam-switch/bin/
+.opam-switch/share/
+.opam-switch/doc/
+
+# Éditeurs et IDE
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Logs et fichiers temporaires
+*.log
+*.tmp
+*.cache

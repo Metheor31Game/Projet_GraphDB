@@ -1,0 +1,4 @@
+(executable
+ (public_name graphDB)
+ (name main)
+ (libraries graphDB))
