@@ -11,7 +11,6 @@ _opam/
 *.cma
 *.annot
 dune-workspace
-dune-project
 
 # Fichiers spécifiques à OPAM
 .opam/
