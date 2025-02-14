@@ -1,10 +1,11 @@
 #!/bin/bash
-yes | opam install dune &&
-yes | opam install . --deps-only &&
-yes | opam install core yojson menhir &&
-yes | opam install ppx_deriving &&
-yes | opam install ocamlgraph &&
-yes | opam switch create . 5.0.0 &&
+cd graphDB &&
+opam -y install dune &&
+opam -y install . --deps-only &&
+opam -y install core yojson menhir &&
+opam -y install ppx_deriving &&
+opam -y install ocamlgraph &&
+opam -y switch create . 5.0.0 &&
 eval $(opam env) &&
 dune build &&
 dune exec Proj_GraphDB
