@@ -1,2 +1,17 @@
 (library
- (name graphDB))
+ (name Proj_GraphDB)
+ (libraries 
+  ocamlgraph
+  ppx_deriving)
+ (preprocess (pps ppx_deriving.show))
+)
+
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser))
+
+
+; turn unused-value-declaration error into warning
+(env (dev (flags :standard -warn-error -8-27-32-39)))

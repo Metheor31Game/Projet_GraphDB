@@ -1,2 +1,10 @@
 (test
- (name test_graphDB))
+ (name test_Proj_GraphDB))
+
+(cram
+ (deps 
+  %{bin:Proj_GraphDB} 
+  (glob_files *.q))
+ )
+
+

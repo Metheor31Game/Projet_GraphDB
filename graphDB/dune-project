@@ -1,26 +1,35 @@
-(lang dune 3.17)
+(lang dune 3.13)
 
-(name graphDB)
+(name Proj_GraphDB)
 
 (generate_opam_files true)
 
 (source
  (github username/reponame))
 
-(authors "Author Name <author@example.com>")
+(authors "Author Name")
 
-(maintainers "Maintainer Name <maintainer@example.com>")
+(maintainers "Maintainer Name")
 
 (license LICENSE)
 
 (documentation https://url/to/documentation)
 
+(using menhir 3.0)
+
 (package
- (name graphDB)
+ (name Proj_GraphDB)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml)
+ (depends 
+  ocaml
+  dune
+  ocamlgraph
+  ppx_deriving)
  (tags
-  ("add topics" "to describe" your project)))
+  (topics "to describe" your project)))
 
-; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html
+; for testing
+(cram enable)
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

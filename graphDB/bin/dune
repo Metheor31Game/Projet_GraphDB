@@ -1,4 +1,9 @@
 (executable
- (public_name graphDB)
+ (public_name Proj_GraphDB)
  (name main)
- (libraries graphDB))
+ (libraries 
+  Proj_GraphDB)
+ )
+
+ ; turn unused-value-declaration error into warning
+(env (dev (flags :standard -warn-error -8-27-32)))
