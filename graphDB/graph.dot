@@ -1,0 +1,7 @@
+digraph G {
+  0 [label="0:A{}", shape=box, fontcolor="#FF0000", ];
+  1 [label="1:B{}", shape=box, fontcolor="#FF0000", ];
+  
+  
+  
+  }

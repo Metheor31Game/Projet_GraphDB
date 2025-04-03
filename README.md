@@ -9,3 +9,18 @@ opam switch create . 5.0.0 &&
 eval $(opam env) &&
 dune build &&
 dune exec Proj_GraphDB
+
+OU
+
+
+opam install ocaml-lsp-server -y
+eval $(opam env)    
+
+opam install menhir -y
+opam install ppx_deriving -y
+opam install ocamlgraph -y
+eval $(opam env)
+
+
+dune build
+dune exec Proj_GraphDB

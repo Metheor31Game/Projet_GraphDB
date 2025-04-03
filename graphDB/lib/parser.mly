@@ -40,20 +40,34 @@ query: cls = list(clause) { Query cls }
 /* TODO: to be completed */
 clause: 
 | CREATE; pts = separated_list(COMMA, pattern) { Create pts }
-
+| MATCH; pts = separated_list(COMMA, pattern) { Match pts }
+| DELETE; dp = delete_pattern { Delete dp }
+| RETURN; vns = separated_list(COMMA, IDENTIFIER) { Return vns }
+| WHERE; e = expr { Where e }
+| SET; assignment = separated_list(COMMA, assignment_pattern) { Set assignment }
 
 /* TODO: to be completed */
 pattern: 
-| np = npattern { SimpPattern np }
+| np = node_pattern { SimpPattern np }
+| np = node_pattern; SUB; LBRACKET; COLON; lbl = IDENTIFIER; RBRACKET; ARROW; p = pattern {CompPattern(np, lbl, p)}
 
-npattern: 
+node_pattern: 
 | LPAREN; v = IDENTIFIER; COLON; t = IDENTIFIER; RPAREN { DeclPattern(v, t) }
 | LPAREN; v = IDENTIFIER; RPAREN { VarRefPattern(v) }
 
+delete_pattern:
+| vns = separated_nonempty_list(COMMA, IDENTIFIER ) { DeleteNodes vns }
+| rls = separated_nonempty_list(COMMA, relation_pattern) { DeleteRels rls }
+
+relation_pattern:
+| v1 = IDENTIFIER; SUB; LBRACKET; COLON; lbl = IDENTIFIER; RBRACKET; ARROW; v2 = IDENTIFIER { (v1, lbl, v2) }
+
+assignment_pattern:
+| vn = IDENTIFIER; DOT; fn = IDENTIFIER; EQ; e = expr { (vn, fn, e) }
 
 /* Expressions */
 
-primary_expr:
+primary_expr: //constante et accès à un champs
 | vn = IDENTIFIER; DOT; fn = IDENTIFIER 
      { AttribAcc(vn, fn) }
 | c = BCONSTANT
@@ -65,9 +79,34 @@ primary_expr:
 | LPAREN e = expr RPAREN
      { e }
 
+binop:
+| op = barith; { BArith op }
+| op = bcompar; { BCompar op }
+| op = blogic; { BLogic op }
+
+barith:
+| ADD  { BAadd }
+| SUB  { BAsub }
+| MUL  { BAmul }
+| DIV  { BAdiv }
+| MOD  { BAmod }
+
+bcompar:
+| EQ  { BCeq }
+| GE  { BCge }
+| GT  { BCgt }
+| LE  { BCle }
+| LT  { BClt }
+| NE  { BCne }
+
+blogic:
+| BLAND { BLand }
+| BLOR  { BLor }
+
 /* TODO: to be completed */
 expr:
 | a = primary_expr { a }
+| e1 = expr; op = binop; e2 = expr { BinOp (op, e1, e2) }
 
 
 /* Types */
