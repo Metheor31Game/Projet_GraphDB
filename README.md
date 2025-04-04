@@ -12,7 +12,7 @@ dune exec Proj_GraphDB
 
 OU
 
-
+opam init
 opam install ocaml-lsp-server -y
 eval $(opam env)    
 
@@ -24,3 +24,7 @@ eval $(opam env)
 
 dune build
 dune exec Proj_GraphDB
+
+puis 
+
+dune exec Proj_GraphDB i
