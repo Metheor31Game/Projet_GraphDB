@@ -2,6 +2,10 @@
    functions for bin/main.ml
 *)
 
+open Graphstruct
+open Lang
+open Typing
+open Instr
 
 exception ParseLexError of exn * (int * int * string * string)
 
@@ -46,13 +50,68 @@ let run_parser_error_reporting fn_option =
     failwith "Stopped execution."
 ;;
 
-(* Run parser interactively in a read - print loop *)
-let run_interactive () = 
+(* Fonction de test pour la fonction check_graph_types*)
+let test_check_graph_types () =
+  let gt = DBG (
+    [DBN ("P", [("nom", StringT)]); DBN ("P", [("age", IntT)]); DBN ("E", [])],  (* Doublon sur "P" *)
+    [DBR ("P", "ami", "P"); DBR ("P", "emp", "X")]  (* "X" non déclaré *)
+  ) in
+  match Typing.check_graph_types gt with
+  | Result.Ok () -> Printf.printf "Graph types are valid!\n"
+  | Result.Error errs -> Printf.printf "Errors:\n%s\n" errs
+
+
+  (* Fonction de test pour tc_instr *)
+let test_tc_instr () =
+  (* Définir un graphe de types valide *)
+  let gt = DBG (
+    [DBN ("P", [("nom", StringT); ("age", IntT)]);
+     DBN ("E", [("pme", BoolT)])],
+    [DBR ("P", "ami", "P"); DBR ("P", "emp", "E")]
+  ) in
+  let env = initial_environment gt in
+  
+  (* Liste d'instructions à tester *)
+  let tests = [
+    (* Cas valide : création d'un nœud *)
+    IActOnNode (CreateAct, "marie", "P");
+    (* Cas valide : création d'un nœud *)
+    IActOnNode (CreateAct, "ab", "E");
+    (* Cas valide : relation entre deux variables existantes *)
+    IActOnRel (CreateAct, "marie", "emp", "ab");
+    (* Cas invalide : variable déjà liée *)
+    IActOnNode (CreateAct, "marie", "P");
+    (* Cas invalide : type de nœud non déclaré *)
+    IActOnNode (CreateAct, "pierre", "X");
+    (* Cas invalide : relation non déclarée *)
+    IActOnRel (CreateAct, "marie", "f", "ab")
+  ] in
+  
+  (* Exécuter les tests et afficher les résultats *)
+  let rec run_tests env = function
+    | [] -> Printf.printf "All tests completed!\n"
+    | instr :: rest ->
+        Printf.printf "Testing: %s\n" (show_instruction instr);
+        match tc_instr instr env with
+        | Result.Ok new_env ->
+            Printf.printf "Success: Environment updated\n%s\n" (show_environment new_env);
+            run_tests new_env rest
+        | Result.Error errs ->
+            Printf.printf "Error:\n%s\n" (String.concat "\n" errs);
+            run_tests env rest  (* On continue avec l'environnement actuel *)
+  in
+  run_tests env tests
+
+(* Modifier run_interactive pour inclure le test *)
+let run_interactive () =
+  (* test_check_graph_types (); *)
+  test_tc_instr ();
   while true do
     Printf.printf ">> %!";
     let e = run_parser_error_reporting None in
     Printf.printf "%s\n" (Lang.show_prog e)
   done
+
 
 (* Run the file with name fn (a string),
    including parsing, type checking, displaying the output
@@ -68,3 +127,4 @@ let run_file fn =
 
 (* Print the help message *)
 let print_help () = print_string "Run as:\n Code_Graph [h | i | f <filename> ] \n "
+
