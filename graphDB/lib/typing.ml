@@ -233,25 +233,64 @@ let tc_instr (i: instruction) (env: environment) : tc_result =
 (* type check list of instructions and stop on error *)
 let check_and_stop (res : tc_result) i : tc_result = Result.bind res (tc_instr i)
 
-let tc_instrs_stop gt instrs : tc_result = 
-  List.fold_left check_and_stop (initial_result gt) instrs
+(**
+ * @name tc_instrs_stop
+ * @description Vérifie le typage d'une liste d'instructions dans un environnement donné, en continuant la vérification même en cas d'erreur pour accumuler tous les messages d'erreur possibles, et renvoie un résultat final indiquant la validité ou les erreurs détectées. Utilisée lorsque continue = true dans typecheck.
+ * @param instrs : instruction list - Une liste d'instructions normalisées (ex. IActOnNode, IActOnRel) définies dans Instr.ml, à vérifier séquentiellement.
+ * @param env : environment - L'environnement initial contenant le graphe de types (types) et les bindings (vname * label list), qui peut être modifié au fil des instructions.
+ * @return tc_result : (environment, string list) result :
+ *   - Result.Ok environment : Si toutes les instructions sont valides, renvoie l'environnement mis à jour après leur vérification.
+ *   - Result.Error string list : Liste complète des messages d'erreur accumulés si au moins une instruction est invalide.
+ * @vars
+ *   - aux : Fonction auxiliaire récursive qui effectue la vérification séquentielle des instructions.
+ *   - acc_errors : Liste des erreurs accumulées au fil de la vérification, inversée à la fin pour respecter l'ordre chronologique.
+ *   - i : Instruction courante extraite de la liste instrs.
+ *   - rest : Liste des instructions restantes à vérifier.
+ *   - new_env : Nouvel environnement généré par tc_instr lorsqu'une instruction est valide.
+ *   - errs : Liste des erreurs renvoyées par tc_instr pour une instruction invalide.
+ *)
+let tc_instrs_stop instrs env =
+  let rec aux instrs env acc_errors =
+    match instrs with
+    | [] -> if acc_errors = [] then Result.Ok env else Result.Error (List.rev acc_errors)
+    | i :: rest ->
+        match tc_instr i env with
+        | Result.Ok new_env -> aux rest new_env acc_errors
+        | Result.Error errs -> aux rest env (errs @ acc_errors)
+  in
+  aux instrs env []
+
+(**
+ * @name tc_instrs_stop_immediate
+ * @description Vérifie le typage d'une liste d'instructions dans un environnement donné, en s'arrêtant immédiatement dès la première erreur détectée. Utilisée lorsque continue = false dans typecheck.
+ * @param instrs : instruction list - Une liste d'instructions normalisées (ex. IActOnNode, IActOnRel) définies dans Instr.ml, à vérifier séquentiellement.
+ * @param env : environment - L'environnement initial contenant le graphe de types (types) et les bindings (vname * label list), qui peut être modifié jusqu'à la première erreur.
+ * @return tc_result : (environment, string list) result :
+ *   - Result.Ok environment : Si toutes les instructions sont valides, renvoie l'environnement mis à jour après leur vérification.
+ *   - Result.Error string list : Liste des messages d'erreur de la première instruction invalide rencontrée.
+ * @vars
+ *   - check_and_stop : Fonction auxiliaire qui applique tc_instr et propage les erreurs immédiatement via Result.bind.
+ *)
+let tc_instrs_stop_immediate instrs env =
+  List.fold_left check_and_stop (Result.Ok env) instrs
 
 
-  (* TODO: typecheck instructions *)
-let typecheck_instructions continue gt instrs np = 
-  let r = Result.Ok initial_environment in   (* call to real typechecker here *)
-  match r with
-  | Result.Error etc -> Printf.printf "%s\n" (String.concat "\n" etc); 
-                        failwith "stopped"
-  |_ -> np
-  
-
-  (* Typecheck program; 
-     If continue is true, continue typechecking even 
-     when errors have been discovered (can be ignored in a first version) *)  
-let typecheck continue (NormProg(gt, NormQuery instrs) as np) = 
+(**
+ * @name typecheck
+ * @description Vérifie le typage d'un programme normalisé (norm_prog) en validant d'abord le graphe de types, puis en vérifiant la liste d'instructions dans un environnement initial. Selon la valeur de continue, soit elle accumule toutes les erreurs (continue = true), soit elle s'arrête à la première erreur (continue = false).
+ * @param continue : bool - Si true, continue la vérification même en cas d'erreurs (utilise tc_instrs_stop); si false, s'arrête à la première erreur (utilise tc_instrs_stop_immediate).
+ * @param NormProg (gt, NormQuery instrs) : norm_prog - Programme normalisé composé d'un graphe de types (gt) et d'une liste d'instructions (instrs).
+ * @return tc_result : (environment, string list) result :
+ *   - Result.Ok environment : Si le programme est valide, renvoie l'environnement final après vérification.
+ *   - Result.Error string list : Liste des erreurs détectées dans le graphe de types ou les instructions (toutes si continue = true, première erreur si continue = false).
+ *)
+let typecheck continue (NormProg (gt, NormQuery instrs)) : tc_result =
   match check_graph_types gt with
-  | Result.Error egt -> Printf.printf "%s\n" ("Undeclared types in\n" ^ egt);
-                        failwith "stopped"
-  | _ -> typecheck_instructions continue gt instrs np
+  | Result.Error egt -> Result.Error ["Undeclared types in graph:\n" ^ egt]
+  | Result.Ok () ->
+      let env = initial_environment gt in
+      if continue then
+        tc_instrs_stop instrs env
+      else
+        tc_instrs_stop_immediate instrs env
   
