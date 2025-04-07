@@ -169,7 +169,30 @@ let unwrap_typecheck (tc_res : Typing.tc_result) (np : norm_prog) : norm_prog =
       Printf.printf "Typecheck errors:\n%s\n" (String.concat "\n" errs);
       failwith "Stopped execution due to type errors"
 
-(* Run the file with name fn (a string),
+
+(* Fonction de test pour normalize_prog *)
+let test_normalize_prog () =
+  let prog = Prog (
+    DBG ([DBN ("P", []); DBN ("E", [])], [DBR ("P", "emp", "E")]),
+    Query [
+      Create [SimpPattern (DeclPattern ("p", "P")); SimpPattern (DeclPattern ("e", "E"))];
+      Create [CompPattern (VarRefPattern "p", "emp", SimpPattern (VarRefPattern "e"))];
+      Match [SimpPattern (VarRefPattern "p")];
+      Set [("p", "active", Const (BoolV true)); ("p", "name", Const (StringV "Paul"))];
+      Where (BinOp (BCompar BCeq, AttribAcc ("p", "active"), Const (BoolV true)));
+      Delete (DeleteNodes ["e"; "p"]);
+      Delete (DeleteRels [("p", "emp", "e")]);
+      Return ["p"]
+    ]
+  ) in
+  Printf.printf "Testing normalize_prog:\n";
+  let NormProg (_gt, NormQuery instrs) = normalize_prog prog in
+  Printf.printf "Normalized instructions:\n";  (* Simplifié *)
+  List.iter (fun i -> Printf.printf "- %s\n" (show_instruction i)) instrs
+
+
+  
+  (* Run the file with name fn (a string),
    including parsing, type checking, displaying the output
  *)
 let run_file fn = 
@@ -188,7 +211,8 @@ let run_interactive () =
   (* test_tc_instr (); *)
   (* test_tc_instrs_stop(); *)
   (* test_tc_instrs_stop_immediate (); *)
-  test_typecheck ();
+  (* test_typecheck (); *)
+  test_normalize_prog ();
   while true do
     Printf.printf ">> %!";
     let e = run_parser_error_reporting None in
