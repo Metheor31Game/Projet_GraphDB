@@ -25,18 +25,56 @@ let normalize_node_pattern act = function
   | DeclPattern (v, l) -> (v, [IActOnNode (act, v, l)])
   | VarRefPattern (v) -> (v, [])
 
+(** 
+ * normalize_pattern - Normalise un motif MiniGQL en une liste d'instructions.
+ *
+ * @description 
+ * Cette fonction récursive transforme un motif du langage source MiniGQL (simple ou composé) en une 
+ * séquence d'instructions normalisées. Elle gère deux cas : un motif simple (SimpPattern) qui est 
+ * délégué à normalize_node_pattern, et un motif composé (CompPattern) qui combine un nœud avec une 
+ * relation et un autre motif. Elle produit un tuple contenant la variable de départ et la liste des 
+ * instructions générées, en respectant l'action spécifiée (par exemple, création ou correspondance).
+ *
+ * @param act L'action à appliquer au motif, de type [Instr.action] (CreateAct ou MatchAct).
+ * @param pattern Le motif à normaliser, de type [Lang.pattern], qui peut être [SimpPattern] ou [CompPattern].
+ *
+ * @return Retourne un tuple de type [(Lang.vname * Instr.instruction list)] :
+ *         - La première composante est la variable de départ du motif.
+ *         - La seconde est la liste des instructions normalisées générées.
+ *
+ * @type [Instr.action -> Lang.pattern -> Lang.vname * Instr.instruction list]
+ *
+ * @var npt Patron de nœud initial dans un motif composé, de type [Lang.node_pattern].
+ * @var rl Étiquette de la relation dans un motif composé, de type [Lang.label].
+ * @var pt Sous-motif suivant dans un motif composé, de type [Lang.pattern].
+ * @var v1 Variable associée au premier nœud normalisé, de type [Lang.vname].
+ * @var ins1 Liste des instructions générées pour le premier nœud, de type [Instr.instruction list].
+ * @var v2 Variable associée au sous-motif suivant, de type [Lang.vname].
+ * @var ins2 Liste des instructions générées pour le sous-motif suivant, de type [Instr.instruction list].
+ * @var firstInstr Première instruction de ins2, de type [Instr.instruction], utilisée pour gérer l'ordre.
+ *)
 let rec normalize_pattern act = function 
-| SimpPattern p -> normalize_node_pattern act p
-| CompPattern (npt, rl, pt) -> 
-  let (v1, ins1) = normalize_node_pattern act npt in
-  let (v2, ins2) = normalize_pattern act pt in
-  match ins2 with 
-  | firstInstr::ins2 -> ( 
-    match firstInstr with
-    | IActOnNode _ -> (v1, ins1 @ firstInstr :: [IActOnRel(act, v1, rl, v2)] @ ins2 )
-    | _ -> (v1, ins1 @ [IActOnRel(act, v1, rl, v2)] @ firstInstr::ins2 ) 
-    )
-  | [] -> (v1, ins1 @ [IActOnRel(act, v1, rl, v2)]) 
+  | SimpPattern p -> 
+      (* Délègue la normalisation d'un motif simple à normalize_node_pattern *)
+      normalize_node_pattern act p
+  | CompPattern (npt, rl, pt) -> 
+      (* Normalise le premier nœud du motif composé *)
+      let (v1, ins1) = normalize_node_pattern act npt in
+      (* Normalise récursivement le sous-motif suivant *)
+      let (v2, ins2) = normalize_pattern act pt in
+      match ins2 with 
+      | firstInstr::ins2 -> ( 
+          match firstInstr with
+          | IActOnNode _ -> 
+              (* Si la première instruction est un nœud, insère la relation juste après *)
+              (v1, ins1 @ firstInstr :: [IActOnRel(act, v1, rl, v2)] @ ins2 )
+          | _ -> 
+              (* Sinon, place la relation avant la première instruction *)
+              (v1, ins1 @ [IActOnRel(act, v1, rl, v2)] @ firstInstr::ins2 ) 
+          )
+      | [] -> 
+          (* Si pas de sous-instructions, ajoute simplement la relation *)
+          (v1, ins1 @ [IActOnRel(act, v1, rl, v2)])
 
 
 let normalize_clause = function
