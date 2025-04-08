@@ -26,11 +26,18 @@ let normalize_node_pattern act = function
   | VarRefPattern (v) -> (v, [])
 
 let rec normalize_pattern act = function 
-  | SimpPattern p -> normalize_node_pattern act p
-  | CompPattern (npt, rl, pt) ->
-      let (vn1, instrs1) = normalize_node_pattern act npt in
-      let (vn2, instrs2) = normalize_pattern act pt in
-      (vn1, instrs1 @ [IActOnRel (act, vn1, rl, vn2)] @ instrs2)
+| SimpPattern p -> normalize_node_pattern act p
+| CompPattern (npt, rl, pt) -> 
+  let (v1, ins1) = normalize_node_pattern act npt in
+  let (v2, ins2) = normalize_pattern act pt in
+  match ins2 with 
+  | firstInstr::ins2 -> ( 
+    match firstInstr with
+    | IActOnNode _ -> (v1, ins1 @ firstInstr :: [IActOnRel(act, v1, rl, v2)] @ ins2 )
+    | _ -> (v1, ins1 @ [IActOnRel(act, v1, rl, v2)] @ firstInstr::ins2 ) 
+    )
+  | [] -> (v1, ins1 @ [IActOnRel(act, v1, rl, v2)]) 
+
 
 let normalize_clause = function
   | Create pats ->

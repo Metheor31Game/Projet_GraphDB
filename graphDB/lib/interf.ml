@@ -60,8 +60,8 @@ let run_interactive () =
  *)
 let run_file fn = 
   let p = run_parser_error_reporting (Some fn) in
-  let np = Typing.typecheck true (Instr.normalize_prog p) in 
-  let State(g, tab, _mn) = Sem.exec np in 
+  let np = Typing.typecheck true (Instr.normalize_prog p) in
+  let State(g, tab, _mn) = Sem.exec (*(Instr.normalize_prog p)*) np in 
   Printf.printf "%s\n" (Sem.show_db_graph_struct g);
   Printf.printf "%s\n" (Sem.show_vname_nodeid_table tab);
   Display.output_table tab;

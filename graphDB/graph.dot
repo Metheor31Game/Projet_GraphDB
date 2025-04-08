@@ -1,7 +1,16 @@
 digraph G {
-  0 [label="0:A{}", shape=box, fontcolor="#FF0000", ];
-  1 [label="1:B{}", shape=box, fontcolor="#FF0000", ];
+  0 [label="0:P{age 25, nom \"Marie Dubois\"}", shape=box,
+     fontcolor="#FF0000", ];
+  1 [label="1:E{pme false, nom \"Airbus\"}", shape=box, fontcolor="#FF0000", ];
+  2 [label="2:P{age 24, nom \"Pierre Dupont\"}", shape=box,
+     fontcolor="#FF0000", ];
+  3 [label="3:E{pme true, nom \"Petit Pain\"}", shape=box,
+     fontcolor="#FF0000", ];
   
   
+  0 -> 1 [color="#0000FF", label="emp", ];
+  0 -> 2 [color="#0000FF", label="ami", ];
+  2 -> 3 [color="#0000FF", label="emp", ];
+  3 -> 1 [color="#0000FF", label="f", ];
   
   }

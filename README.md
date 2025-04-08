@@ -12,15 +12,15 @@ dune exec Proj_GraphDB
 OU
 
 opam init
-opam install ocaml-lsp-server -y
+opam install ocaml-lsp-server -y &&
 eval $(opam env)
 
-opam install menhir -y
-opam install ppx_deriving -y
-opam install ocamlgraph -y
+opam install menhir -y &&
+opam install ppx_deriving -y &&
+opam install ocamlgraph -y &&
 eval $(opam env)
 
-dune build
+dune build &&
 dune exec Proj_GraphDB
 
 puis
