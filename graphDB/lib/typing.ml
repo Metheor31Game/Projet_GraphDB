@@ -2,295 +2,145 @@ open Graphstruct
 open Lang
 open Instr
  
-type environment = { types:  db_tp; bindings: (vname * label) list }
+type environment = { types: db_tp; bindings: (vname * label) list }
 [@@deriving show]
 
-let initial_environment gt = {types = gt; bindings = []}
+let initial_environment gt = { types = gt; bindings = [] }
 let initial_result gt = Result.Ok (initial_environment gt)
   
 exception FieldAccError of string
 exception TypeError of string
-
+exception TypeCheckError of string list
 
 type tc_result = (environment, string list) result
 
 (* Functions for manipulating the environment *)
 
-let add_var vn t (env:environment) = 
-  {env with bindings = (vn,t)::env.bindings}
+let add_var vn t (env: environment) = 
+  { env with bindings = (vn, t) :: env.bindings }
 
 let remove_var vn env = 
-  {env with bindings = List.remove_assoc vn env.bindings}
+  { env with bindings = List.remove_assoc vn env.bindings }
 
-(* TODO: add more auxiliary functions here *)
-
-(**
- * @name check_graph_types
- * @description Vérifie la validité d'un graphe de types (db_tp) en s'assurant qu'il n'y a pas de doublons dans les déclarations de nœuds ou de relations, et que toutes les relations référencent des nœuds déclarés.
- * @param DBG (ntdecls, rtdecls) : Un graphe de types composé de :
- *   - ntdecls : Liste de déclarations de nœuds (DBN (label, attrib_decl list)).
- *   - rtdecls : Liste de déclarations de relations (DBR (source, label, target)).
- * @return (unit, string) result :
- *   - Result.Ok () : Si le graphe est valide (aucune erreur).
- *   - Result.Error string : Une chaîne contenant les messages d'erreur concaténés avec "\n" si des problèmes sont détectés.
- * @vars
- *   - node_labels : Liste des étiquettes (labels) des nœuds extraites de ntdecls.
- *   - unique_node_labels : Liste des étiquettes uniques triées (sans doublons).
- *   - errors : Référence mutable pour accumuler les messages d'erreur.
- *   - valid_node_labels : Liste des étiquettes valides (identique à node_labels ici).
- *   - relation_triples : Liste des triplets (source, label, target) des relations.
- *   - unique_relation_triples : Liste des triplets uniques triés (sans doublons).
- *)
 let check_graph_types (DBG (ntdecls, rtdecls)) : (unit, string) result =
-  (* Extrait les étiquettes des nœuds de la liste ntdecls, ignore les attributs *)
   let node_labels = List.map (fun (DBN (lbl, _)) -> lbl) ntdecls in
-  (* Trie et supprime les doublons dans les étiquettes pour détecter les répétitions *)
   let unique_node_labels = List.sort_uniq String.compare node_labels in
-  (* Initialise une référence mutable pour stocker les erreurs au fur et à mesure *)
   let errors = ref [] in
   
-  (* Vérifie s'il y a des doublons dans les déclarations de nœuds *)
   if List.length node_labels <> List.length unique_node_labels then
-    (* Ajoute un message d'erreur si le nombre d'étiquettes diffère après suppression des doublons *)
     errors := "Multiple declarations of the same node type" :: !errors;
   
-  (* Définit les étiquettes valides comme étant toutes celles déclarées (pas de filtrage ici) *)
   let valid_node_labels = node_labels in
-  (* Définit une fonction auxiliaire pour vérifier chaque relation *)
   let check_relation (DBR (src, rlbl, tgt)) =
-    (* Vérifie si la source de la relation est un nœud déclaré *)
     if not (List.mem src valid_node_labels) then
-      (* Ajoute une erreur si la source n'est pas dans les nœuds valides *)
       errors := ("Reference to undeclared node type '" ^ src ^ "' in relation '" ^ rlbl ^ "'") :: !errors;
-    (* Vérifie si la cible de la relation est un nœud déclaré *)
     if not (List.mem tgt valid_node_labels) then
-      (* Ajoute une erreur si la cible n'est pas dans les nœuds valides *)
       errors := ("Reference to undeclared node type '" ^ tgt ^ "' in relation '" ^ rlbl ^ "'") :: !errors
   in
-  (* Applique la vérification à toutes les relations dans rtdecls *)
   List.iter check_relation rtdecls;
   
-  (* Transforme les relations en triplets pour faciliter la comparaison *)
   let relation_triples = List.map (fun (DBR (s, r, t)) -> (s, r, t)) rtdecls in
-  (* Trie et supprime les doublons dans les triplets avec une fonction de comparaison personnalisée *)
   let unique_relation_triples = List.sort_uniq (fun (s1, r1, t1) (s2, r2, t2) ->
-    let c1 = String.compare s1 s2 in  (* Compare d'abord les sources *)
+    let c1 = String.compare s1 s2 in
     if c1 <> 0 then c1
-    else let c2 = String.compare r1 r2 in  (* Puis les étiquettes si sources égales *)
+    else let c2 = String.compare r1 r2 in
     if c2 <> 0 then c2
-    else String.compare t1 t2  (* Enfin les cibles si tout le reste est égal *)
+    else String.compare t1 t2
   ) relation_triples in
-  (* Vérifie s'il y a des doublons dans les déclarations de relations *)
   if List.length relation_triples <> List.length unique_relation_triples then
-    (* Ajoute un message d'erreur si des relations identiques sont déclarées plusieurs fois *)
     errors := "Multiple declarations of the same relation type" :: !errors;
   
-  (* Retourne le résultat final selon la présence ou non d'erreurs *)
-  if !errors = [] then
-    Result.Ok ()  (* Aucun problème détecté, graphe valide *)
-  else
-    (* Concatène les erreurs en une seule chaîne avec des sauts de ligne, inverse pour l'ordre chronologique *)
-    Result.Error (String.concat "\n" (List.rev !errors))
+  if !errors = [] then Result.Ok () else Result.Error (String.concat "\n" (List.rev !errors))
 
-(* TODO: fill in details *)
 let rec tp_expr env = function
-  Const v -> IntT
-| AttribAcc (vn, fn) -> IntT
-| BinOp (bop, e1, e2) -> tp_expr env e1
+  | Const v -> (
+      match v with
+      | BoolV _ -> BoolT
+      | IntV _ -> IntT
+      | StringV _ -> StringT)
+  | AttribAcc (vn, fn) -> (
+      match List.assoc_opt vn env.bindings with
+      | Some lbl ->
+          let attribs = List.assoc lbl (List.map (fun (DBN (l, a)) -> (l, a)) (nodes_of_graph env.types)) in
+          List.assoc fn attribs
+      | None -> raise (TypeError ("Variable '" ^ vn ^ "' not bound")))
+  | BinOp (bop, e1, e2) ->
+      let t1 = tp_expr env e1 in
+      let t2 = tp_expr env e2 in
+      match bop with
+      | BArith _ -> if t1 = IntT && t2 = IntT then IntT else raise (TypeError "Arithmetic operation requires int types")
+      | BCompar _ -> if t1 = t2 then BoolT else raise (TypeError "Comparison requires same types")
+      | BLogic _ -> if t1 = BoolT && t2 = BoolT then BoolT else raise (TypeError "Logic operation requires bool types")
 
-(* check expression e with expected type et in environment env *)
 let check_expr e et env : tc_result = 
   try 
-    if tp_expr env e = et
-    then Result.Ok env
+    if tp_expr env e = et then Result.Ok env
     else Result.Error ["Expression does not have expected type " ^ (show_attrib_tp et)]
   with 
   | TypeError s -> Result.Error [s]
   | FieldAccError s -> Result.Error [s]
-  
 
-  (**
- * @name tc_instr
- * @description Vérifie le typage d'une instruction individuelle dans un environnement donné, met à jour l'environnement si nécessaire, et renvoie un résultat indiquant la validité ou les erreurs.
- * @param i : instruction - Une instruction normalisée (ex. IActOnNode, IActOnRel) définie dans Instr.ml.
- * @param env : environment - L'environnement contenant le graphe de types (types) et les bindings (vname * label list).
- * @return tc_result : (environment, string list) result :
- *   - Result.Ok environment : Si l'instruction est valide, renvoie l'environnement mis à jour.
- *   - Result.Error string list : Liste des messages d'erreur si l'instruction est invalide.
- * @vars
- *   - node_exists : Fonction auxiliaire qui vérifie si un label de nœud existe dans env.types.
- *   - rel_exists : Fonction auxiliaire qui vérifie si une relation (src, rlbl, tgt) existe dans env.types.
- *   - lbl/lbl1/lbl2 : Étiquettes de nœuds associées à des variables dans les bindings.
- *   - new_env : Nouvel environnement mis à jour après certaines instructions (ex. ajout/suppression de variable).
- *   - unbound : Liste des variables non liées dans IReturn.
- *   - new_bindings : Bindings filtrés pour IReturn.
- *   - attribs : Liste des attributs associés à un nœud dans ISet.
- *   - expected_type : Type attendu pour l'expression dans ISet (défaut à BoolT si non trouvé).
- *   - et : Type attendu pour l'expression dans IWhere (toujours BoolT).
- *)
-let tc_instr (i: instruction) (env: environment) : tc_result =
-  (* Vérifie si un label de nœud existe dans le graphe de types *)
-  let node_exists lbl = 
-    List.exists (fun (DBN (l, _)) -> l = lbl) (nodes_of_graph env.types)
-  in
-  (* Vérifie si une relation (source, label, target) existe dans le graphe de types *)
-  let rel_exists src rlbl tgt =
-    List.exists (fun (DBR (s, r, t)) -> s = src && r = rlbl && t = tgt) (rels_of_graph env.types)
-  in
-  (* Analyse l'instruction selon son type *)
-  match i with
-  | IActOnNode (act, vn, lb) ->
-      (* Vérifie si la variable est déjà liée dans l'environnement *)
-      if List.mem_assoc vn env.bindings then
-        Result.Error ["Variable '" ^ vn ^ "' is already bound"]  (* Erreur : variable déjà utilisée *)
-      (* Vérifie si le label du nœud est déclaré dans le graphe de types *)
-      else if not (node_exists lb) then
-        Result.Error ["Node type '" ^ lb ^ "' is not declared"]  (* Erreur : type de nœud inconnu *)
-      else
-        (* Ajoute la variable avec son label à l'environnement *)
-        let new_env = add_var vn lb env in
-        Result.Ok new_env  (* Succès : renvoie l'environnement mis à jour *)
-  | IActOnRel (act, vn1, rlbl, vn2) ->
-      (* Récupère le label associé à vn1 dans les bindings, "" si non trouvé *)
-      let lbl1 = try List.assoc vn1 env.bindings with Not_found -> "" in
-      (* Récupère le label associé à vn2 dans les bindings, "" si non trouvé *)
-      let lbl2 = try List.assoc vn2 env.bindings with Not_found -> "" in
-      (* Vérifie si vn1 est liée *)
-      if lbl1 = "" then
-        Result.Error ["Variable '" ^ vn1 ^ "' is not bound"]  (* Erreur : vn1 non liée *)
-      (* Vérifie si vn2 est liée *)
-      else if lbl2 = "" then
-        Result.Error ["Variable '" ^ vn2 ^ "' is not bound"]  (* Erreur : vn2 non liée *)
-      (* Vérifie si la relation (lbl1, rlbl, lbl2) existe dans le graphe *)
-      else if not (rel_exists lbl1 rlbl lbl2) then
-        Result.Error ["Relation '" ^ rlbl ^ "' from '" ^ lbl1 ^ "' to '" ^ lbl2 ^ "' is not declared"]  (* Erreur : relation invalide *)
-      else
-        Result.Ok env  (* Succès : environnement inchangé *)
-  | IDeleteNode vn ->
-      (* Vérifie si la variable est liée dans l'environnement *)
-      if not (List.mem_assoc vn env.bindings) then
-        Result.Error ["Variable '" ^ vn ^ "' is not bound"]  (* Erreur : variable non liée *)
-      else
-        (* Supprime la variable de l'environnement *)
-        let new_env = remove_var vn env in
-        Result.Ok new_env  (* Succès : renvoie l'environnement mis à jour *)
-  | IDeleteRel (vn1, rlbl, vn2) ->
-      (* Récupère le label de vn1, "" si non trouvé *)
-      let lbl1 = try List.assoc vn1 env.bindings with Not_found -> "" in
-      (* Récupère le label de vn2, "" si non trouvé *)
-      let lbl2 = try List.assoc vn2 env.bindings with Not_found -> "" in
-      (* Vérifie si vn1 est liée *)
-      if lbl1 = "" then
-        Result.Error ["Variable '" ^ vn1 ^ "' is not bound"]  (* Erreur : vn1 non liée *)
-      (* Vérifie si vn2 est liée *)
-      else if lbl2 = "" then
-        Result.Error ["Variable '" ^ vn2 ^ "' is not bound"]  (* Erreur : vn2 non liée *)
-      (* Vérifie si la relation (lbl1, rlbl, lbl2) existe *)
-      else if not (rel_exists lbl1 rlbl lbl2) then
-        Result.Error ["Relation '" ^ rlbl ^ "' from '" ^ lbl1 ^ "' to '" ^ lbl2 ^ "' is not declared"]  (* Erreur : relation invalide *)
-      else
-        Result.Ok env  (* Succès : environnement inchangé *)
-  | IReturn vns ->
-      (* Identifie les variables non liées dans la liste vns *)
-      let unbound = List.filter (fun vn -> not (List.mem_assoc vn env.bindings)) vns in
-      (* Vérifie s'il y a des variables non liées *)
-      if unbound <> [] then
-        Result.Error (List.map (fun vn -> "Variable '" ^ vn ^ "' is not bound") unbound)  (* Erreur : variables non liées *)
-      (* Vérifie s'il y a des doublons dans la liste des variables *)
-      else if List.length vns <> List.length (List.sort_uniq String.compare vns) then
-        Result.Error ["Return contains duplicate variables"]  (* Erreur : doublons détectés *)
-      else
-        (* Filtrer les bindings pour ne garder que ceux dans vns *)
-        let new_bindings = List.filter (fun (vn, _) -> List.mem vn vns) env.bindings in
-        Result.Ok { env with bindings = new_bindings }  (* Succès : renvoie l'environnement réduit *)
-  | IWhere e ->
-      (* Définit le type attendu de l'expression comme étant BoolT *)
-      let et = BoolT in
-      (* Vérifie le typage de l'expression *)
-      begin match check_expr e et env with
-      | Result.Ok _ -> Result.Ok env  (* Succès : expression booléenne valide, environnement inchangé *)
-      | Result.Error errs -> Result.Error errs  (* Erreur : propage les erreurs de check_expr *)
-      end
-  | ISet (vn, fn, e) ->
-      (* Récupère le label de vn, "" si non trouvé *)
-      let lbl = try List.assoc vn env.bindings with Not_found -> "" in
-      (* Vérifie si la variable est liée *)
-      if lbl = "" then
-        Result.Error ["Variable '" ^ vn ^ "' is not bound"]  (* Erreur : variable non liée *)
-      else
-        (* Récupère la liste des attributs du nœud associé à lbl *)
+  let tc_instr (i: instruction) (env: environment) : environment =
+    let node_exists lbl = 
+      List.exists (fun (DBN (l, _)) -> l = lbl) (nodes_of_graph env.types)
+    in
+    let rel_exists src rlbl tgt =
+      List.exists (fun (DBR (s, r, t)) -> s = src && r = rlbl && t = tgt) (rels_of_graph env.types)
+    in
+    match i with
+    | IActOnNode (_, vn, lb) ->
+        if not (node_exists lb) then
+          raise (TypeCheckError ["Node type '" ^ lb ^ "' is not declared"])
+        else
+          add_var vn lb env  (* Permet la réutilisation de variables *)
+    | IActOnRel (act, vn1, rlbl, vn2) ->
+        let lbl1 = try List.assoc vn1 env.bindings with Not_found -> raise (TypeCheckError ["Variable '" ^ vn1 ^ "' is not bound"]) in
+        let lbl2 = try List.assoc vn2 env.bindings with Not_found -> raise (TypeCheckError ["Variable '" ^ vn2 ^ "' is not bound"]) in
+        if not (rel_exists lbl1 rlbl lbl2) then
+          raise (TypeCheckError ["Relation '" ^ rlbl ^ "' from '" ^ lbl1 ^ "' to '" ^ lbl2 ^ "' is not declared"])
+        else
+          env
+    | IDeleteNode vn ->
+        if not (List.mem_assoc vn env.bindings) then
+          raise (TypeCheckError ["Variable '" ^ vn ^ "' is not bound"])
+        else
+          remove_var vn env
+    | IDeleteRel (vn1, rlbl, vn2) ->
+        let lbl1 = try List.assoc vn1 env.bindings with Not_found -> raise (TypeCheckError ["Variable '" ^ vn1 ^ "' is not bound"]) in
+        let lbl2 = try List.assoc vn2 env.bindings with Not_found -> raise (TypeCheckError ["Variable '" ^ vn2 ^ "' is not bound"]) in
+        if not (rel_exists lbl1 rlbl lbl2) then
+          raise (TypeCheckError ["Relation '" ^ rlbl ^ "' from '" ^ lbl1 ^ "' to '" ^ lbl2 ^ "' is not declared"])
+        else
+          env
+    | IReturn vns ->
+        let unbound = List.filter (fun vn -> not (List.mem_assoc vn env.bindings)) vns in
+        if unbound <> [] then
+          raise (TypeCheckError (List.map (fun vn -> "Variable '" ^ vn ^ "' is not bound") unbound))
+        else if List.length vns <> List.length (List.sort_uniq String.compare vns) then
+          raise (TypeCheckError ["Return contains duplicate variables"])
+        else
+          { env with bindings = List.filter (fun (vn, _) -> List.mem vn vns) env.bindings }
+    | IWhere e ->
+        let et = BoolT in
+        (match check_expr e et env with
+         | Result.Ok _ -> env
+         | Result.Error errs -> raise (TypeCheckError errs))
+    | ISet (vn, fn, e) ->
+        let lbl = try List.assoc vn env.bindings with Not_found -> raise (TypeCheckError ["Variable '" ^ vn ^ "' is not bound"]) in
         let attribs = try List.assoc lbl (nodes_of_graph env.types |> List.map (fun (DBN (l, a)) -> (l, a)))
                       with Not_found -> [] in
-        (* Récupère le type attendu de l'attribut fn, BoolT par défaut si non trouvé *)
-        let expected_type = try List.assoc fn attribs with Not_found -> BoolT in
-        (* Vérifie si l'expression correspond au type attendu *)
-        begin match check_expr e expected_type env with
-        | Result.Ok _ -> Result.Ok env  (* Succès : expression valide, environnement inchangé *)
-        | Result.Error errs -> Result.Error errs  (* Erreur : propage les erreurs de check_expr *)
-        end
+        let expected_type = try List.assoc fn attribs with Not_found -> raise (TypeCheckError ["Attribute '" ^ fn ^ "' not declared for node type '" ^ lbl ^ "'"]) in
+        (match check_expr e expected_type env with
+         | Result.Ok _ -> env
+         | Result.Error errs -> raise (TypeCheckError errs))
 
-
-(* type check list of instructions and stop on error *)
-let check_and_stop (res : tc_result) i : tc_result = Result.bind res (tc_instr i)
-
-(**
- * @name tc_instrs_stop
- * @description Vérifie le typage d'une liste d'instructions dans un environnement donné, en continuant la vérification même en cas d'erreur pour accumuler tous les messages d'erreur possibles, et renvoie un résultat final indiquant la validité ou les erreurs détectées. Utilisée lorsque continue = true dans typecheck.
- * @param instrs : instruction list - Une liste d'instructions normalisées (ex. IActOnNode, IActOnRel) définies dans Instr.ml, à vérifier séquentiellement.
- * @param env : environment - L'environnement initial contenant le graphe de types (types) et les bindings (vname * label list), qui peut être modifié au fil des instructions.
- * @return tc_result : (environment, string list) result :
- *   - Result.Ok environment : Si toutes les instructions sont valides, renvoie l'environnement mis à jour après leur vérification.
- *   - Result.Error string list : Liste complète des messages d'erreur accumulés si au moins une instruction est invalide.
- * @vars
- *   - aux : Fonction auxiliaire récursive qui effectue la vérification séquentielle des instructions.
- *   - acc_errors : Liste des erreurs accumulées au fil de la vérification, inversée à la fin pour respecter l'ordre chronologique.
- *   - i : Instruction courante extraite de la liste instrs.
- *   - rest : Liste des instructions restantes à vérifier.
- *   - new_env : Nouvel environnement généré par tc_instr lorsqu'une instruction est valide.
- *   - errs : Liste des erreurs renvoyées par tc_instr pour une instruction invalide.
- *)
 let tc_instrs_stop instrs env =
-  let rec aux instrs env acc_errors =
-    match instrs with
-    | [] -> if acc_errors = [] then Result.Ok env else Result.Error (List.rev acc_errors)
-    | i :: rest ->
-        match tc_instr i env with
-        | Result.Ok new_env -> aux rest new_env acc_errors
-        | Result.Error errs -> aux rest env (errs @ acc_errors)
-  in
-  aux instrs env []
+  List.fold_left (fun env i -> tc_instr i env) env instrs
 
-(**
- * @name tc_instrs_stop_immediate
- * @description Vérifie le typage d'une liste d'instructions dans un environnement donné, en s'arrêtant immédiatement dès la première erreur détectée. Utilisée lorsque continue = false dans typecheck.
- * @param instrs : instruction list - Une liste d'instructions normalisées (ex. IActOnNode, IActOnRel) définies dans Instr.ml, à vérifier séquentiellement.
- * @param env : environment - L'environnement initial contenant le graphe de types (types) et les bindings (vname * label list), qui peut être modifié jusqu'à la première erreur.
- * @return tc_result : (environment, string list) result :
- *   - Result.Ok environment : Si toutes les instructions sont valides, renvoie l'environnement mis à jour après leur vérification.
- *   - Result.Error string list : Liste des messages d'erreur de la première instruction invalide rencontrée.
- * @vars
- *   - check_and_stop : Fonction auxiliaire qui applique tc_instr et propage les erreurs immédiatement via Result.bind.
- *)
-let tc_instrs_stop_immediate instrs env =
-  List.fold_left check_and_stop (Result.Ok env) instrs
-
-
-(**
- * @name typecheck
- * @description Vérifie le typage d'un programme normalisé (norm_prog) en validant d'abord le graphe de types, puis en vérifiant la liste d'instructions dans un environnement initial. Selon la valeur de continue, soit elle accumule toutes les erreurs (continue = true), soit elle s'arrête à la première erreur (continue = false).
- * @param continue : bool - Si true, continue la vérification même en cas d'erreurs (utilise tc_instrs_stop); si false, s'arrête à la première erreur (utilise tc_instrs_stop_immediate).
- * @param NormProg (gt, NormQuery instrs) : norm_prog - Programme normalisé composé d'un graphe de types (gt) et d'une liste d'instructions (instrs).
- * @return tc_result : (environment, string list) result :
- *   - Result.Ok environment : Si le programme est valide, renvoie l'environnement final après vérification.
- *   - Result.Error string list : Liste des erreurs détectées dans le graphe de types ou les instructions (toutes si continue = true, première erreur si continue = false).
- *)
-let typecheck continue (NormProg (gt, NormQuery instrs)) : tc_result =
+let typecheck _continue (NormProg (gt, NormQuery instrs) as np) : Instr.norm_prog =
   match check_graph_types gt with
-  | Result.Error egt -> Result.Error ["Undeclared types in graph:\n" ^ egt]
+  | Result.Error egt -> raise (TypeCheckError ["Undeclared types in graph:\n" ^ egt])
   | Result.Ok () ->
       let env = initial_environment gt in
-      if continue then
-        tc_instrs_stop instrs env
-      else
-        tc_instrs_stop_immediate instrs env
-  
+      let _ = tc_instrs_stop instrs env in
+      np
