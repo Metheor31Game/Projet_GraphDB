@@ -37,7 +37,6 @@ digraph G {
       shape=box, fontcolor="#FF0000", ];
   
   
-  0 -> 0 [color="#0000FF", label="ami", ];
   0 -> 1 [color="#0000FF", label="emp", ];
   0 -> 2 [color="#0000FF", label="coloc", ];
   0 -> 3 [color="#0000FF", label="emp", ];

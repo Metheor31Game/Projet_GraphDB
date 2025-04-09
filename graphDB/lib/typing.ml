@@ -295,6 +295,21 @@ let typecheck _continue (NormProg (gt, NormQuery instrs) as np) : Instr.norm_pro
   match check_graph_types gt with
   | Result.Error egt -> 
       (* Lève une erreur si le graphe de types est invalide *)
+      let rec printerrors str i =
+        (* i est l'indice du caractère courant dans la chaîne *)
+        if i >= String.length str then
+          ()  (* Fin de la chaîne, on arrête *)
+        else
+          let current_char = str.[i] in
+          if current_char = '\n' then
+            begin
+              Printf.printf "%s\n" (String.sub str 0 i);  (* Affiche ce qui a été accumulé jusqu'au '\n' *)
+              printerrors str (i + 1)  (* Passe au caractère suivant *)
+            end
+          else
+            printerrors str (i + 1)  (* Continue sans afficher si ce n'est pas un '\n' *)
+      in
+      printerrors egt 0;  (* On commence à parcourir la chaîne depuis le début *)
       raise (TypeCheckError ["Undeclared types in graph:\n" ^ egt])
   | Result.Ok () ->
       (* Initialise l'environnement avec le graphe de types *)
