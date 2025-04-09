@@ -1,10 +1,13 @@
 (:P {nom string, age int, ville string})
 (:E {nom string, pme bool, secteur string})
 
+
 (:P) -[:ami]-> (:P)
 (:P) -[:emp]-> (:E)
 (:E) -[:f]-> (:E)
 (:P) -[:coloc]-> (:P)
+
+(* Commentaire *)
 
 create
    (marie: P) -[:emp]-> (ab: E),
@@ -17,6 +20,7 @@ create
    (emma: P) -[:emp]-> (lcl: E),
    (thomas: P) -[:emp]-> (lcl: E),
    (lea: P) -[:emp]-> (boulangerie: E)
+   
 
 set
    marie.nom = "Marie Dubois",    marie.age = 25,   marie.ville = "Toulouse",
@@ -53,6 +57,8 @@ create
    (marie) -[:coloc]-> (clement),
    (sophie) -[:coloc]-> (luc),
    (julie) -[:coloc]-> (antoine)
+
+
 
 match 
    (p1: P) -[:emp]-> (e: E) -[:f]-> (e2: E),

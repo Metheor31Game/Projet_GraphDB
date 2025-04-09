@@ -23,4 +23,4 @@ Information pour le prof :
 Utilisation d'assistant IA tel que chatGPT ou Grok pour écrire les commentaires et préparer des tests pour les fonctions.
 
 Points d'améliorations :
-Permettre les commentaires dans notre langage
+

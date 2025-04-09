@@ -1,10 +1,67 @@
 digraph G {
-  0 [label="0:P{ville \"Toulouse\", age 12, nom \"Marie\"}", shape=box,
-     fontcolor="#FF0000", ];
-  1 [label="1:E{secteur \"Aeronotique\", pme false, nom \"Airbus\"}",
+  0 [label="0:P{ville \"Toulouse\", age 25, nom \"Marie Dubois\"}",
      shape=box, fontcolor="#FF0000", ];
+  1 [label="1:E{}", shape=box, fontcolor="#FF0000", ];
+  2 [label="2:P{ville \"Toulouse\", age 32, nom \"Clement Roux\"}",
+     shape=box, fontcolor="#FF0000", ];
+  3 [label="3:E{secteur \"Aeronautique\", pme false, nom \"Airbus\"}",
+     shape=box, fontcolor="#FF0000", ];
+  4 [label="4:P{ville \"Paris\", age 24, nom \"Pierre Dupont\"}", shape=box,
+     fontcolor="#FF0000", ];
+  5 [label="5:E{secteur \"Boulangerie\", pme true, nom \"Petit Pain\"}",
+     shape=box, fontcolor="#FF0000", ];
+  6 [label="6:P{ville \"Lyon\", age 28, nom \"Sophie Martin\"}", shape=box,
+     fontcolor="#FF0000", ];
+  7 [label="7:E{}", shape=box, fontcolor="#FF0000", ];
+  8 [label="8:P{ville \"Lyon\", age 35, nom \"Luc Bernard\"}", shape=box,
+     fontcolor="#FF0000", ];
+  9 [label="9:E{secteur \"Energie\", pme false, nom \"Total France\"}",
+     shape=box, fontcolor="#FF0000", ];
+  10 [label="10:P{ville \"Paris\", age 27, nom \"Julie Lefevre\"}",
+      shape=box, fontcolor="#FF0000", ];
+  11 [label="11:E{}", shape=box, fontcolor="#FF0000", ];
+  12 [label="12:P{ville \"Paris\", age 30, nom \"Antoine Morel\"}",
+      shape=box, fontcolor="#FF0000", ];
+  13 [label="13:E{secteur \"Transport\", pme false, nom \"SNCF\"}",
+      shape=box, fontcolor="#FF0000", ];
+  14 [label="14:P{ville \"Nantes\", age 23, nom \"Emma Durand\"}", shape=box,
+      fontcolor="#FF0000", ];
+  15 [label="15:E{}", shape=box, fontcolor="#FF0000", ];
+  16 [label="16:P{ville \"Nantes\", age 29, nom \"Thomas Petit\"}",
+      shape=box, fontcolor="#FF0000", ];
+  17 [label="17:E{secteur \"Banque\", pme false, nom \"LCL\"}", shape=box,
+      fontcolor="#FF0000", ];
+  18 [label="18:P{ville \"Bordeaux\", age 26, nom \"Lea Simon\"}", shape=box,
+      fontcolor="#FF0000", ];
+  19 [label="19:E{secteur \"Boulangerie\", pme true, nom \"Boulangerie Locale\"}",
+      shape=box, fontcolor="#FF0000", ];
   
   
+  0 -> 0 [color="#0000FF", label="ami", ];
   0 -> 1 [color="#0000FF", label="emp", ];
+  0 -> 2 [color="#0000FF", label="coloc", ];
+  0 -> 3 [color="#0000FF", label="emp", ];
+  0 -> 4 [color="#0000FF", label="ami", ];
+  2 -> 3 [color="#0000FF", label="emp", ];
+  2 -> 4 [color="#0000FF", label="ami", ];
+  4 -> 5 [color="#0000FF", label="emp", ];
+  5 -> 3 [color="#0000FF", label="f", ];
+  5 -> 17 [color="#0000FF", label="f", ];
+  6 -> 7 [color="#0000FF", label="emp", ];
+  6 -> 8 [color="#0000FF", label="ami", ];
+  6 -> 8 [color="#0000FF", label="coloc", ];
+  6 -> 13 [color="#0000FF", label="emp", ];
+  8 -> 3 [color="#0000FF", label="emp", ];
+  8 -> 9 [color="#0000FF", label="emp", ];
+  10 -> 11 [color="#0000FF", label="emp", ];
+  10 -> 12 [color="#0000FF", label="ami", ];
+  10 -> 12 [color="#0000FF", label="coloc", ];
+  12 -> 13 [color="#0000FF", label="emp", ];
+  14 -> 15 [color="#0000FF", label="emp", ];
+  14 -> 16 [color="#0000FF", label="ami", ];
+  16 -> 17 [color="#0000FF", label="emp", ];
+  18 -> 10 [color="#0000FF", label="ami", ];
+  18 -> 19 [color="#0000FF", label="emp", ];
+  19 -> 13 [color="#0000FF", label="f", ];
   
   }
